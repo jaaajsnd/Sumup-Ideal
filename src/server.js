@@ -170,7 +170,7 @@ app.post('/checkout', async (req, res) => {
               });
               const data = await response.json();
               if (data.checkoutId) {
-                window.location.href = 'https://dashboard.sumup.com/merchant-codes/${data.merchantCode}/checkouts/${data.checkoutId}';
+                window.location.href = 'https://dashboard.sumup.com/merchant-codes/' + data.merchantCode + '/checkouts/' + data.checkoutId;
               } else {
                 throw new Error('Kon betaling niet starten');
               }
