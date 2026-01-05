@@ -212,11 +212,21 @@ app.post('/api/create-payment', async (req, res) => {
 
     const checkout = response.data;
     console.log('SumUp checkout created:', checkout.id);
-    console.log('Full SumUp response:', JSON.stringify(checkout, null, 2));
-    
-    const checkoutUrl = `https://api.sumup.com/v0.1/checkouts/${checkout.id}/pay`;
-    console.log('Checkout URL:', checkoutUrl);
-    
+
+    // Create payment request for iDEAL
+    const paymentResponse = await axios.post(`https://api.sumup.com/v0.1/checkouts/${checkout.id}/payment-requests`, {
+      payment_method: 'ideal'
+    }, {
+      headers: {
+        'Authorization': `Bearer ${SUMUP_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log('Payment request:', JSON.stringify(paymentResponse.data, null, 2));
+
+    const checkoutUrl = paymentResponse.data.redirect_url || paymentResponse.data.url;
+
     pendingOrders.set(checkout.id, { orderId, customerData, cartData, returnUrl, created_at: new Date() });
 
     res.json({ status: 'success', checkoutUrl: checkoutUrl });
