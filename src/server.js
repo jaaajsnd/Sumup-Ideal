@@ -214,9 +214,12 @@ app.post('/api/create-payment', async (req, res) => {
     console.log('SumUp checkout created:', checkout.id);
     console.log('Full SumUp response:', JSON.stringify(checkout, null, 2));
     
+    const checkoutUrl = `https://api.sumup.com/v0.1/checkouts/${checkout.id}/pay`;
+    console.log('Checkout URL:', checkoutUrl);
+    
     pendingOrders.set(checkout.id, { orderId, customerData, cartData, returnUrl, created_at: new Date() });
 
-    res.json({ status: 'success', checkoutUrl: checkout.url || `https://pay.sumup.com/${checkout.id}` });
+    res.json({ status: 'success', checkoutUrl: checkoutUrl });
   } catch (error) {
     console.error('Error:', error.message);
     console.error('Details:', error.response?.data);
