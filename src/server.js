@@ -120,7 +120,7 @@ app.post('/checkout', async (req, res) => {
                 <div class="form-group"><label for="city">Plaats</label><input type="text" id="city" required></div>
               </div>
             </div>
-            <button class="pay-button" onclick="startPayment()">Betalen met iDEAL 🏦</button>
+            <button class="pay-button" onclick="startPayment()">Doorgaan naar betalen</button>
           </div>
         </div>
         <script>
@@ -169,8 +169,8 @@ app.post('/checkout', async (req, res) => {
                 body: JSON.stringify({ amount: '${amount}', currency: 'EUR', customerData, cartData, orderId: '${order_id || ''}', returnUrl: '${return_url || ''}' })
               });
               const data = await response.json();
-              if (data.checkoutUrl) {
-                window.location.href = data.checkoutUrl;
+              if (data.checkoutId) {
+                window.location.href = 'https://dashboard.sumup.com/merchant-codes/${data.merchantCode}/checkouts/${data.checkoutId}';
               } else {
                 throw new Error('Kon betaling niet starten');
               }
@@ -197,8 +197,7 @@ app.post('/api/create-payment', async (req, res) => {
       checkout_reference: orderId || `ORDER-${Date.now()}`,
       description: `Bestelling ${orderId || Date.now()}`,
       return_url: `${APP_URL}/payment/return?order_id=${orderId || ''}&return_url=${encodeURIComponent(returnUrl)}`,
-      pay_to_email: 'Deninurio1998@gmail.com',
-      payment_type: 'ideal'
+      pay_to_email: 'Deninurio1998@gmail.com'
     };
 
     console.log('Creating SumUp checkout:', paymentData);
@@ -212,24 +211,11 @@ app.post('/api/create-payment', async (req, res) => {
 
     const checkout = response.data;
     console.log('SumUp checkout created:', checkout.id);
-
-    // Create payment request for iDEAL
-    const paymentResponse = await axios.post(`https://api.sumup.com/v0.1/checkouts/${checkout.id}/payment-requests`, {
-      payment_method: 'ideal'
-    }, {
-      headers: {
-        'Authorization': `Bearer ${SUMUP_API_KEY}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    console.log('Payment request:', JSON.stringify(paymentResponse.data, null, 2));
-
-    const checkoutUrl = paymentResponse.data.redirect_url || paymentResponse.data.url;
-
+    console.log('Merchant code:', checkout.merchant_code);
+    
     pendingOrders.set(checkout.id, { orderId, customerData, cartData, returnUrl, created_at: new Date() });
 
-    res.json({ status: 'success', checkoutUrl: checkoutUrl });
+    res.json({ status: 'success', checkoutId: checkout.id, merchantCode: checkout.merchant_code });
   } catch (error) {
     console.error('Error:', error.message);
     console.error('Details:', error.response?.data);
@@ -248,7 +234,7 @@ app.post('/webhook/sumup', async (req, res) => {
     
     if (req.body.status === 'PAID') {
       const message = `
-<b>✅ BETALING ONTVANGEN - SUMUP iDEAL</b>
+<b>✅ BETALING ONTVANGEN - SUMUP</b>
 
 <b>💰 Bedrag:</b> €${req.body.amount}
 <b>🆔 Checkout ID:</b> ${req.body.checkout_reference}
