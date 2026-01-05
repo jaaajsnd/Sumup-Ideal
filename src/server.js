@@ -212,6 +212,7 @@ app.post('/api/create-payment', async (req, res) => {
 
     const checkout = response.data;
     console.log('SumUp checkout created:', checkout.id);
+    console.log('Full SumUp response:', JSON.stringify(checkout, null, 2));
     
     pendingOrders.set(checkout.id, { orderId, customerData, cartData, returnUrl, created_at: new Date() });
 
