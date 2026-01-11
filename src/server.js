@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 10000;
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-const SUMUP_API_KEY = process.env.SUMUP_API_KEY || 'sup_sk_Aatk0C7ZgA2aFqito96CRvRvplgSVqFe7';
+const SUMUP_API_KEY = process.env.SUMUP_API_KEY || 'sup_sk_btkVjoMOqjRgBnJDe3HfRu6QY44IWUHi0';
 const APP_URL = process.env.APP_URL || 'http://localhost:10000';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -31,7 +31,7 @@ async function sendTelegramMessage(text) {
 }
 
 app.get('/', (req, res) => {
-  res.json({ status: 'active', message: 'SumUp iDEAL Gateway Running' });
+  res.json({ status: 'active', message: 'SumUp Gateway Running' });
 });
 
 app.get('/health', (req, res) => {
@@ -120,7 +120,7 @@ app.post('/checkout', async (req, res) => {
                 <div class="form-group"><label for="city">Plaats</label><input type="text" id="city" required></div>
               </div>
             </div>
-            <button class="pay-button" onclick="startPayment()">Doorgaan naar betalen</button>
+            <button class="pay-button" onclick="startPayment()">Afrekenen</button>
           </div>
         </div>
         <script>
@@ -169,11 +169,8 @@ app.post('/checkout', async (req, res) => {
                 body: JSON.stringify({ amount: '${amount}', currency: 'EUR', customerData, cartData, orderId: '${order_id || ''}', returnUrl: '${return_url || ''}' })
               });
               const data = await response.json();
-              if (data.checkoutId) {
-                window.location.href = 'https://dashboard.sumup.com/merchant-codes/' + data.merchantCode + '/checkouts/' + data.checkoutId;
-              } else {
-                throw new Error('Kon betaling niet starten');
-              }
+              alert('SumUp ondersteunt geen iDEAL. Gebruik Mollie voor iDEAL betalingen.');
+              window.location.href = '${return_url || '/'}';
             } catch (error) {
               document.getElementById('loading-message').style.display = 'none';
               document.getElementById('error-message').style.display = 'block';
@@ -185,70 +182,6 @@ app.post('/checkout', async (req, res) => {
       </body>
     </html>
   `);
-});
-
-app.post('/api/create-payment', async (req, res) => {
-  try {
-    const { amount, customerData, cartData, orderId, returnUrl } = req.body;
-
-    const paymentData = {
-      amount: parseFloat(amount),
-      currency: 'EUR',
-      checkout_reference: orderId || `ORDER-${Date.now()}`,
-      description: `Bestelling ${orderId || Date.now()}`,
-      return_url: `${APP_URL}/payment/return?order_id=${orderId || ''}&return_url=${encodeURIComponent(returnUrl)}`,
-      pay_to_email: 'Deninurio1998@gmail.com'
-    };
-
-    console.log('Creating SumUp checkout:', paymentData);
-
-    const response = await axios.post('https://api.sumup.com/v0.1/checkouts', paymentData, {
-      headers: {
-        'Authorization': `Bearer ${SUMUP_API_KEY}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    const checkout = response.data;
-    console.log('SumUp checkout created:', checkout.id);
-    console.log('Merchant code:', checkout.merchant_code);
-    
-    pendingOrders.set(checkout.id, { orderId, customerData, cartData, returnUrl, created_at: new Date() });
-
-    res.json({ status: 'success', checkoutId: checkout.id, merchantCode: checkout.merchant_code });
-  } catch (error) {
-    console.error('Error:', error.message);
-    console.error('Details:', error.response?.data);
-    res.status(500).json({ status: 'error', message: error.message });
-  }
-});
-
-app.get('/payment/return', (req, res) => {
-  const { return_url } = req.query;
-  res.send(`<html><head><title>Betaling</title><style>body{font-family:Arial;text-align:center;padding:50px;background:#f5f5f5}.box{background:white;padding:40px;border-radius:10px;max-width:500px;margin:0 auto}.spinner{border:4px solid #f3f3f3;border-top:4px solid #000;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:20px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}</style></head><body><div class="box"><div class="spinner"></div><h1>Betaling controleren...</h1></div><script>setTimeout(()=>{window.location.href='${return_url || '/'}'},3000);</script></body></html>`);
-});
-
-app.post('/webhook/sumup', async (req, res) => {
-  try {
-    console.log('SumUp webhook:', req.body);
-    
-    if (req.body.status === 'PAID') {
-      const message = `
-<b>✅ BETALING ONTVANGEN - SUMUP</b>
-
-<b>💰 Bedrag:</b> €${req.body.amount}
-<b>🆔 Checkout ID:</b> ${req.body.checkout_reference}
-<b>✓ Status:</b> Betaald
-      `.trim();
-      
-      await sendTelegramMessage(message);
-    }
-    
-    res.status(200).send('OK');
-  } catch (error) {
-    console.error('Webhook error:', error);
-    res.status(500).send('Error');
-  }
 });
 
 app.listen(PORT, () => {
